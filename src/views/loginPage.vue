@@ -1,6 +1,6 @@
 <template>
   <div id="login">
-    <div class="box">
+    <div :class="['box', this.$ismobile ? 'mobile' : 'computer']">
       <h2>即时通信</h2>
       <div class="inputBox">
         <input type="text" v-model="jobno" required="required" />
@@ -9,6 +9,7 @@
       <div class="inputBox">
         <input type="password" v-model="password" required="required" />
         <span>密码</span>
+        <button @click="forgot">忘记密码</button>
       </div>
       <div class="buttonBox">
         <button @click="login">登陆</button>
@@ -54,10 +55,13 @@ export default {
             alert("帐号已存在");
             console.error(msg.data);
           } else {
-            console.log(msg.data);
             this.$cookies.set("user", msg.data.data);
             if (func == "regist") alert("帐号注册成功，正在登陆");
-            location.href = "/main";
+            if (this.jobno == "000") {
+              this.$router.push("/admin");
+            } else {
+              this.$router.push("/main");
+            }
           }
         })
         .catch((err) => {
@@ -70,6 +74,24 @@ export default {
     },
     regist: function () {
       this.userRequest("regist");
+    },
+    forgot: function () {
+      let that = this;
+      let socket = new WebSocket("ws://" + this.$baseURL + "/websocket/temp");
+      socket.onopen = function () {
+        socket.send(
+          JSON.stringify({
+            cno: "000",
+            text: {
+              type: "check",
+              jobno: that.jobno,
+              password: md5(that.password),
+            },
+          })
+        );
+        socket.close();
+      };
+      alert("已向“000”号用户发送修改密码请求，请耐心等待");
     },
   },
 };
@@ -89,8 +111,6 @@ export default {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 480px;
-  height: 350px;
   background: var(--neutral-secondery);
   border-radius: 20px;
   display: flex;
@@ -101,9 +121,19 @@ export default {
   gap: 20px;
 }
 
+.box.mobile {
+  width: 90%;
+  height: 350px;
+}
+
+.box.computer {
+  width: 30%;
+  height: 50%;
+}
+
 .inputBox {
   position: relative;
-  width: 300px;
+  width: 75%;
 }
 
 .inputBox input {
@@ -145,6 +175,17 @@ export default {
 .inputBox input:valid,
 .inputBox input:focus {
   border: 2px solid var(--primary-main);
+}
+
+.inputBox button {
+  background-color: transparent;
+  color: var(--primary-secondery);
+  font-weight: bold;
+  float: right;
+}
+
+.inputBox button:hover {
+  color: var(--primary-main);
 }
 
 /* 给按钮写样式 */

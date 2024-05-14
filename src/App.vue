@@ -16,12 +16,17 @@
   box-shadow: 0;
   outline: none;
   font-family: "Microsoft Yahei";
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 :root {
   --primary-main: #0b58e6;
   --primary-secondery: #6db2f8;
-  --primary-thirdery: #c094e4;
   --neutral-main: #535262;
   --neutral-secondery: #d5e3f7;
 }

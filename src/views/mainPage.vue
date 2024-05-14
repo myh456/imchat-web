@@ -1,10 +1,14 @@
 <template>
-  <div id="main" :class="this.$ismobile ? 'mobile' : 'computer'">
+  <div
+    id="main"
+    :class="this.$ismobile ? 'mobile' : 'computer'"
+    v-show="!this.$ismobile || !chating"
+  >
     <div class="info">
       <div class="pic">
         <img
           @click="this.$refs.fileInput.click()"
-          :src="'http://' + this.$baseURL + user.pic"
+          :src="'http://' + this.$baseURL + user.pic + '?' + new Date()"
           alt=""
         />
         <input
@@ -55,13 +59,13 @@
       <div id="searched" class="lists" v-show="searching">
         <ul v-for="(item, index) in allusers" :key="index">
           <li
-            @click="this.selectedIndex = index"
+            @click="requestcont(item)"
             :class="{
               selected: selectedIndex === index,
               normal: selectedIndex !== index,
             }"
           >
-            <div class="item" @click="requestcont(item.jobno)">
+            <div class="item">
               <img :src="'http://' + this.$baseURL + item.pic" alt="" />
               <h2>{{ item.nickname }}</h2>
             </div>
@@ -77,10 +81,11 @@
             @click="
               this.selectedIndex = index;
               this.chatwith = item;
+              this.chating = true;
             "
             :class="{
-              selected: selectedIndex === index,
-              normal: selectedIndex !== index,
+              selected: selectedIndex == index,
+              normal: selectedIndex != index,
             }"
           >
             <div class="item">
@@ -94,10 +99,10 @@
   </div>
   <chat-page
     id="chat"
+    :class="this.$ismobile ? 'mobile' : 'computer'"
     :user="this.user"
     :cont="this.chatwith"
-    v-if="!this.$ismobile"
-    :key="refresh"
+    v-show="!this.$ismobile || chating"
   >
   </chat-page>
 </template>
@@ -119,6 +124,7 @@ export default {
       ismobile: false,
       naming: false,
       searching: false,
+      chating: false,
 
       refresh: 0,
       socket: null,
@@ -128,6 +134,8 @@ export default {
     // 获取本人信息
     if (!this.$cookies.isKey("user")) {
       this.$router.replace("/login");
+    } else if (this.$cookies.get("user").jobno == "000") {
+      this.$router.replace("/admin");
     } else {
       this.user.jobno = this.$cookies.get("user").jobno;
       this.user.nickname = this.$cookies.get("user").nickname;
@@ -176,6 +184,9 @@ export default {
         url: "/user/update/nickname",
         baseURL: "http://" + this.$baseURL,
       });
+      let user = this.$cookies.get("user");
+      user.nickname = this.user.nickname;
+      this.$cookies.set("user", user);
     },
     getcontacts: function () {
       axios({
@@ -213,20 +224,28 @@ export default {
         });
     },
     requestcont: function (cont) {
+      if (
+        this.contacts.findIndex((contact) => contact.jobno == cont.jobno) != -1
+      ) {
+        alert("对方已是您的好友");
+        return;
+      }
       axios({
         method: "post",
         params: {
           uno: this.user.jobno,
-          cno: cont,
+          cno: cont.jobno,
         },
         url: "/contact/addcontact",
         baseURL: "http://" + this.$baseURL,
       });
+      this.sendrequest(cont.jobno);
       alert("已发送对话请求");
+      this.contacts.push(cont);
     },
     initsocket: function () {
       if (typeof WebSocket == "undefined") {
-        console.log("浏览器不支持websocket");
+        alert("浏览器不支持websocket");
       } else {
         console.log("浏览器支持websocket");
       }
@@ -234,7 +253,7 @@ export default {
         this.socket.close();
         this.socket = null;
       }
-      let socketURL = "ws://localhost:8086/websocket/" + this.user.jobno;
+      let socketURL = "ws://" + this.$baseURL + "/websocket/" + this.user.jobno;
       this.socket = new WebSocket(socketURL);
       this.socket.onopen = function () {
         console.log("websocket已打开");
@@ -246,8 +265,13 @@ export default {
         console.log("websocket发生了错误");
       };
     },
-    refreshkey: function () {
-      this.refresh++;
+    sendrequest: function (cno) {
+      let msg = {
+        uno: this.user.jobno,
+        cno: cno,
+        text: { type: "check", from: this.user.jobno },
+      };
+      this.socket.send(JSON.stringify(msg));
     },
   },
 };
@@ -258,21 +282,26 @@ export default {
   box-sizing: border-box;
   padding: 10px;
   height: 100vh;
-  float: left;
   color: var(--neutral-main);
+  overflow: hidden;
 }
 
-#chat {
-  width: 75%;
-  float: right;
+#main.computer {
+  float: left;
+  width: 25%;
 }
 
-.mobile {
+#main.mobile {
   width: 100%;
 }
 
-.computer {
-  width: 25%;
+#chat.computer {
+  float: right;
+  width: 75%;
+}
+
+#chat.mobile {
+  width: 100%;
 }
 
 .info .pic {
